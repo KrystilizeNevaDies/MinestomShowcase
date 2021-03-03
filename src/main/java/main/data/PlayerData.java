@@ -1,5 +1,5 @@
 package main.data;
 
 public interface PlayerData {
-	public LogOffData getLastLogOff();
+	// TODO: Choose what to save in database
 }

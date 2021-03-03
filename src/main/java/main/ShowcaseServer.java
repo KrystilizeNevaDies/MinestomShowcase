@@ -1,23 +1,29 @@
 package main;
 
-import java.util.List;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
-import main.data.LogOffData;
-import main.data.PlayerData;
+import org.ini4j.InvalidFileFormatException;
+import org.ini4j.Wini;
+
 import main.data.PlayerDatabase;
-import main.instances.ShowcaseInstance;
 import main.instances.lobby.PrimaryLobbyInstance;
 import main.instances.lobby.SecondaryLobbyInstance;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.player.PlayerLoginEvent;
 import net.minestom.server.extras.MojangAuth;
+import net.minestom.server.extras.velocity.VelocityProxy;
 import net.minestom.server.instance.InstanceManager;
 
 public class ShowcaseServer {
+	
+	public static Wini config;
 	
 	private static Random random = new Random();
 	
@@ -27,32 +33,27 @@ public class ShowcaseServer {
     	// Start initialization
     	MinecraftServer server = MinecraftServer.init();
     	
+    	// Load config
+    	try {
+			config = loadConfig();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
     	
     	
     	///////////////
     	// Instances //
     	///////////////
     	InstanceManager instanceManager = MinecraftServer.getInstanceManager();
-    	
-    	// TODO: Seperate instance names & uuids into config
-    	// Here i've simply implemented a hashing system, this is not optimal and should be changed in the future
-    	List<String> lobbyInstanceNames = List.of("Lobby-1", "Lobby-2", "Lobby-3");
-    	
-    	// For each instance name, create the uuid and instance 
-    	for (String name : lobbyInstanceNames) {
-    		// Create uuid
-    		UUID uuid = new UUID(name.hashCode(), name.length());
-    		
-    		// Make instance
-    		SecondaryLobbyInstance instance = new SecondaryLobbyInstance(uuid);
-    		
-    		// Register instance
-    		instanceManager.registerInstance(instance);
-    		PrimaryLobbyInstance.getLobbyMappings().put(uuid, instance);
-    	}
-    	
-    	
-    	// TODO: Minigame servers
+		// Create uuid
+		UUID uuid = UUID.randomUUID();
+		
+		// Make instance
+		SecondaryLobbyInstance instance = new SecondaryLobbyInstance(uuid);
+		
+		// Register instance
+		instanceManager.registerInstance(instance);
+		PrimaryLobbyInstance.getLobbyMappings().put(uuid, instance);
     	
     	
     	
@@ -71,33 +72,27 @@ public class ShowcaseServer {
     	//////////////////
     	
     	// Enable misc features
+    	
+    	// Authenticate players
     	MojangAuth.init();
     	
+    	// If velocity is enabled, turn on and accept secret key
+    	if (config.get("Velocity", "enabled", Integer.class) == 1)
+    		VelocityProxy.enable(config.get("Velocity", "secret", String.class));
+    	
+    	
     	// Start Server
-    	server.start("0.0.0.0", 25565);
+    	server.start("0.0.0.0", 25565, (connection, data) -> {
+    		data.setDescription(config.get("Server", "MOTD", String.class));
+    	});
     }
     
-    private static void handleConnection(PlayerLoginEvent event) {
-    	// TODO: Check last logged in server, and try to spawn them there, else spawn them in a lobby server
-    	UUID uuid = event.getPlayer().getUuid();
-    	
-    	// Get player data object
-    	PlayerData data = database.getPlayerData(uuid);
-    	
-    	// Get log off server
-    	LogOffData logOff = data.getLastLogOff();
-    	ShowcaseInstance instance = (ShowcaseInstance) MinecraftServer.getInstanceManager().getInstance(logOff.getInstanceID());
-    	
-    	if (instance.shouldRelogPlayer(event)) {
-	    	// Relog player
-	    	instance.relogPlayer(event);
-    	} else {
-    		// Else spawn in lobby server
-    		joinLobby(event);
-    	}
-    }
-    
-    private static void joinLobby(PlayerLoginEvent event) {
+    private static Wini loadConfig() throws InvalidFileFormatException, IOException {
+    	InputStream inputStream = new FileInputStream(new File("config.ini"));
+		return new Wini(inputStream);
+	}
+
+	private static void handleConnection(PlayerLoginEvent event) {
     	// Get all lobby servers
     	Map<UUID, SecondaryLobbyInstance> lobbyMappings = PrimaryLobbyInstance.getLobbyMappings();
     	SecondaryLobbyInstance[] instances = lobbyMappings.values().toArray(new SecondaryLobbyInstance[lobbyMappings.size()]);

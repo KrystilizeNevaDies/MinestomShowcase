@@ -5,29 +5,31 @@ import java.util.Map;
 import java.util.UUID;
 
 import net.minestom.server.instance.InstanceContainer;
-import net.minestom.server.storage.StorageLocation;
+import net.minestom.server.utils.Position;
 import net.minestom.server.world.DimensionType;
 /*
- * The primary lobby instance is the instance in which the lobby work resides.
+ * The primary lobby instance is the instance in which the lobby world resides.
  * 
- * This world is then shared among distributed ssecondary lobby instances
+ * No players are intended to be on this world.
+ * 
+ * This world is then distributed among secondary lobby instances
  */
 public class PrimaryLobbyInstance extends InstanceContainer {
 	
 	private static Map<UUID, SecondaryLobbyInstance> lobbyMappings = new HashMap<UUID, SecondaryLobbyInstance>();
 	
-	public static PrimaryLobbyInstance INSTANCE = new PrimaryLobbyInstance(PrimaryLobbyInstance.getLobbyStorageLocation());
+	public static PrimaryLobbyInstance INSTANCE = new PrimaryLobbyInstance();
 	
-	private PrimaryLobbyInstance(StorageLocation storageLocation) {
-		super(UUID.randomUUID(), DimensionType.OVERWORLD, storageLocation);
-	}
-	
-	private static StorageLocation getLobbyStorageLocation() {
-		// TODO: Storage location
-		return null;
+	private PrimaryLobbyInstance() {
+		super(UUID.randomUUID(), DimensionType.OVERWORLD, null);
 	}
 
 	public static Map<UUID, SecondaryLobbyInstance> getLobbyMappings() {
 		return lobbyMappings;
+	}
+
+	public static Position getSpawn() {
+		// TODO: Choose correct spawn location
+		return new Position(0, 0, 0);
 	}
 }

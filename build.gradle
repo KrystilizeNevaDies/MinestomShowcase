@@ -17,6 +17,9 @@ repositories {
 dependencies {
     // Master
     compile 'com.github.Minestom:Minestom:bde027432a'
+    
+    // ini config
+    compile "org.ini4j:ini4j:0.5.4"
 }
 
 sourceSets {
